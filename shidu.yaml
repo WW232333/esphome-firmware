@@ -1,0 +1,159 @@
+esphome:
+  name: soil-moisture-c3
+  on_boot:
+    then:
+      - lambda: |-
+          auto now = id(ha_time).now();
+          if (now.is_valid()) {
+            int hour = now.hour;
+            id(sleep_seconds) = (hour >= 19 || hour < 6) ? 4200 : 1800;
+          } else {
+            id(sleep_seconds) = 1800;
+          }
+      - if:
+          condition:
+            lambda: 'return id(sleep_seconds) == 4200;'
+          then:
+            - logger.log: "夜间模式：跳过测量，直接深度睡眠"
+            - deep_sleep.enter:
+                id: deep_sleep_1
+                sleep_duration: !lambda 'return id(sleep_seconds) * 1000;'
+          else:
+            - logger.log: "白天模式：开始测量"
+            - switch.turn_on: external_power
+            - delay: 5000ms
+            - component.update: soil_voltage
+            - component.update: battery_voltage
+            - delay: 500ms
+            - delay: 4000ms
+            - switch.turn_off: external_power
+            - deep_sleep.enter:
+                id: deep_sleep_1
+                sleep_duration: !lambda 'return id(sleep_seconds) * 1000;'
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: esp32c3
+  framework:
+    type: arduino
+    version: recommended
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+globals:
+  - id: sleep_seconds
+    type: int
+    restore_value: false
+    initial_value: '1800'
+
+wifi:
+  ssid: "wyfsxm-2G"
+  password: "036613470511SXM?"
+  fast_connect: true
+  reboot_timeout: 0s
+
+api:
+  encryption:
+    key: "rRVbiXrhPSAN1jOrZYrvtsnJBaAryEAdpH24IlGmjE8"  # 可替换为你自己的密钥
+  reboot_timeout: 0s
+
+ota:
+  platform: esphome
+  password: "1"
+
+logger:
+  level: WARN
+  baud_rate: 0
+
+i2c:
+  sda: GPIO4
+  scl: GPIO5
+  scan: true
+  frequency: 50kHz
+
+ads1115:
+  - address: 0x48
+    continuous_mode: false
+
+sensor:
+  - platform: ads1115
+    id: soil_voltage
+    name: "soil_voltage_raw"
+    multiplexer: 'A0_GND'
+    gain: 4.096
+    update_interval: 5s
+    accuracy_decimals: 3
+    unit_of_measurement: "V"
+
+  - platform: ads1115
+    id: battery_voltage
+    name: "battery_voltage_raw"
+    multiplexer: 'A1_GND'
+    gain: 4.096
+    update_interval: 5s
+    accuracy_decimals: 2
+    filters:
+      - multiply: 2.0
+    unit_of_measurement: "V"
+
+  - platform: template
+    name: "土壤湿度"
+    id: soil_moisture
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent"
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      float voltage = id(soil_voltage).state;
+      if (voltage >= 2.65) return 0;
+      if (voltage <= 1.006) return 100;
+      return (2.65 - voltage) / (2.65 - 1.006) * 100;
+
+  - platform: template
+    name: "电池百分比"
+    id: battery_level
+    unit_of_measurement: "%"
+    icon: "mdi:battery"
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      float voltage = id(battery_voltage).state;
+      if (voltage >= 4.20) return 100;
+      if (voltage >= 4.15) return 95;
+      if (voltage >= 4.11) return 90;
+      if (voltage >= 4.07) return 85;
+      if (voltage >= 4.03) return 80;
+      if (voltage >= 3.98) return 75;
+      if (voltage >= 3.93) return 70;
+      if (voltage >= 3.88) return 65;
+      if (voltage >= 3.83) return 60;
+      if (voltage >= 3.78) return 55;
+      if (voltage >= 3.73) return 50;
+      if (voltage >= 3.68) return 45;
+      if (voltage >= 3.63) return 40;
+      if (voltage >= 3.58) return 35;
+      if (voltage >= 3.53) return 30;
+      if (voltage >= 3.48) return 25;
+      if (voltage >= 3.43) return 20;
+      if (voltage >= 3.38) return 15;
+      if (voltage >= 3.33) return 10;
+      if (voltage >= 3.28) return 5;
+      if (voltage >= 3.20) return 3;
+      if (voltage >= 3.10) return 1;
+      return 0;
+
+switch:
+  - platform: gpio
+    pin: GPIO0
+    inverted: true
+    name: "外设电源"
+    id: external_power
+    restore_mode: ALWAYS_OFF
+
+deep_sleep:
+  id: deep_sleep_1
+
+status_led:
+  pin: GPIO1
