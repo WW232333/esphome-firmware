@@ -24,4 +24,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firmware
-          path: .esphome/build/shidu.yaml/.pioenvs/shidu.yaml/firmware.bin
+          path: .esphome/build/soil-moisture-c3/.pioenvs/soil-moisture-c3/firmware.bin
