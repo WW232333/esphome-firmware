@@ -35,7 +35,7 @@ esp32:
   board: esp32-c3-devkitm-1
   variant: esp32c3
   framework:
-    type: arduino
+    type: esp-idf
     version: recommended
 
 time:
@@ -56,7 +56,7 @@ wifi:
 
 api:
   encryption:
-    key: "rRVbiXrhPSAN1jOrZYrvtsnJBaAryEAdpH24IlGmjE8"  # 可替换为你自己的密钥
+    key: "ZRcRLhHzns0Q9qrCCwymmuACw0+kyfQDkiSjgWEQIiI="
   reboot_timeout: 0s
 
 ota:
