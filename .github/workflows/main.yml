@@ -1,0 +1,27 @@
+name: Compile ESPHome Firmware
+
+on:
+  push:
+    paths:
+      - '*.yaml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ESPHome
+        run: |
+          pip install esphome
+
+      - name: Compile
+        run: |
+          esphome compile shidu.yaml
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: .esphome/build/shidu.yaml/.pioenvs/shidu.yaml/firmware.bin
